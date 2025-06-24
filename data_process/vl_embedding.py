@@ -99,19 +99,19 @@ class VL_Embedding(MultiModalEmbedding):
         self.mode = mode
 
         # 根据不同的模型类型初始化相应的模型和处理器
-        # 目前就对通义相关模型做了适配
+        # 目前就对通义相关模型做了适配，cuda选择空闲的卡号码
         if "vidore" in model and "qwen" in model:
             self.embed_model = ColQwen2.from_pretrained(
                 model,
                 torch_dtype=torch.bfloat16,
-                device_map="cuda",
+                device_map="cuda:4",
             ).eval()
             self.processor = ColQwen2Processor.from_pretrained(model)
         elif "vidore" in model and "pali" in model:
             self.embed_model = ColPali.from_pretrained(
                 model,
                 torch_dtype=torch.bfloat16,
-                device_map="cuda",
+                device_map="cuda:4",
             ).eval()
             self.processor = ColPaliProcessor.from_pretrained(model)
 

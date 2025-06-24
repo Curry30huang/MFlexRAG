@@ -1,4 +1,4 @@
-from typing import Optional, List, Mapping, Any, Dict
+from typing import Optional, List, Mapping, Any, Dict, Union, Tuple
 import json
 from tqdm import tqdm
 import os
@@ -20,7 +20,7 @@ from utils.format_converter import nodefile2node,nodes2dict
 # 定义基础目录前缀
 base_dir_prefix = '/home/huangjiayu/MFlexRAG/data_process/data'
 
-def gmm(recall_result: list[NodeWithScore], input_length: int=20, max_valid_length: int=10, min_valid_length: int=5) -> List[NodeWithScore]:
+def gmm(recall_result: List[NodeWithScore], input_length: int=20, max_valid_length: int=10, min_valid_length: int=5) -> List[NodeWithScore]:
     """
     使用高斯混合模型(GMM)对检索结果进行聚类和筛选
 
@@ -83,7 +83,7 @@ class SearchEngine:
     """
     搜索引擎类，用于处理文档检索，是封闭领域问答，需要针对特定文档下的图片进行检索
     """
-    def __init__(self, dataset, doc_name, node_dir_prefix=None, embed_model_name='vidore/colqwen2-v1.0'):
+    def __init__(self, dataset: str, doc_name: str, node_dir_prefix: Optional[str] = None, embed_model_name: str = 'vidore/colqwen2-v1.0') -> None:
         """
         初始化搜索引擎
 
@@ -152,7 +152,7 @@ class SearchEngine:
         self.output_dir = os.path.join(self.dataset_dir, 'search_output')
         # os.makedirs(self.output_dir, exist_ok=True)
 
-    def _process_search_result(self, node):
+    def _process_search_result(self, node: Union[Dict[str, Any], BaseNode]) -> Tuple[str, str]:
         """
         统一处理检索结果节点
         Args:
@@ -187,7 +187,7 @@ class SearchEngine:
         return doc, page
 
 
-    def load_document_nodes(self):
+    def load_document_nodes(self) -> None:
         """
         加载指定文档目录下的所有节点文件
 
@@ -211,7 +211,7 @@ class SearchEngine:
             self.embedding_img = [torch.tensor(node.embedding).view(-1,128).bfloat16() for node in self.nodes]
             self.embedding_img = [tensor.to(self.vector_embed_model.embed_model.device) for tensor in self.embedding_img]
 
-    def change_document(self, doc_name):
+    def change_document(self, doc_name: str) -> None:
         """
         切换文档领域，重新加载指定文档的节点
 
@@ -234,7 +234,7 @@ class SearchEngine:
         self.load_document_nodes()
         print(f"Successfully loaded {len(self.nodes)} nodes from document: {doc_name}")
 
-    def _load_nodes_from_directory(self, directory):
+    def _load_nodes_from_directory(self, directory: str) -> List[Union[TextNode, ImageNode]]:
         """
         从指定目录加载节点文件
 
@@ -279,7 +279,7 @@ class SearchEngine:
                 parsed_files.extend(result)
         return parsed_files
 
-    def search(self, query):
+    def search(self, query: str) -> Dict[str, Any]:
         """
         执行搜索
 
@@ -328,7 +328,7 @@ class SearchEngine:
 
         return nodes2dict(recall_results_output)
 
-    def search_example(self,example):
+    def search_example(self, example: Dict[str, Any]) -> Dict[str, Any]:
         """
         搜索示例
 
@@ -342,7 +342,7 @@ class SearchEngine:
         example['recall_result'] = recall_result
         return example
 
-    def search_multi_session(self,output_file='search_result.json'):
+    def search_multi_session(self, output_file: str = 'search_result.json') -> None:
         """
         多会话搜索，根据rag_dataset_path中的数据进行搜索，并保存到output_file中
 
