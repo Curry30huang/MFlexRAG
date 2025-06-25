@@ -30,10 +30,13 @@ class MflexRAG:
         """
 
         # 最大循环次数
-        max_loop_times = 1
+        max_loop_times = 3
 
         # 初始化循环次数
         loop_times = 0
+
+        # 现在认为每次迭代，只有query是变化的，其他变量都需要重新计算
+        original_query:str = query # 原始查询语句
 
         while loop_times < max_loop_times:
             # 1. 图像检索
@@ -59,8 +62,7 @@ class MflexRAG:
                 print(f"图像重排序失败，跳出循环")
                 break
 
-
-            # TODO: 将筛选并重排序之后的图片选择出来
+            # 将筛选并重排序之后的图片选择出来
             selected_image_index_list:List[int] = resort_result.get('selected_images',[])
             selected_image_path_list = [image_path_list[i] for i in selected_image_index_list]
             image_path_list = selected_image_path_list
@@ -78,9 +80,8 @@ class MflexRAG:
                 print(f"文档摘要失败，跳出循环")
                 break
 
-            summary_content = summary_result.get('document_summary',"")
-            if summary_content is None:
-                summary_content = ""
+            summary_content_temp = summary_result.get('document_summary',"")
+            summary_content = summary_content_temp if summary_content_temp is not None else ""
 
             print(f"文档摘要成功，摘要内容: {summary_content}")
 
@@ -91,6 +92,26 @@ class MflexRAG:
                 break
 
             print(f"推理成功，推理结果: {reasoning_result}")
+
+            # 判断如果推理结果的response_type为answer，则则结束循环
+            if reasoning_result.get('response_type') == 'answer':
+                print(f"推理结果为answer，结束循环")
+                break
+
+            # 判断如果推理结果的response_type为not_answerable，则结束循环
+            if reasoning_result.get('response_type') == 'not_answerable':
+                print(f"推理结果为not_answerable，结束循环")
+                break
+
+            # 判断如果推理结果的response_type为query_update，则更新查询语句
+            if reasoning_result.get('response_type') == 'query_update':
+                print(f"推理结果为query_update，更新查询语句")
+                query_update = reasoning_result.get('query_update',"")
+                if query_update is not None:
+                    query = query_update
+                else:
+                    print(f"推理结果为query_update，但query_update为空，跳出循环")
+                    break
 
             loop_times += 1
 

@@ -62,6 +62,7 @@ Provide a rewritten long query that PRESERVES THE ORIGINAL MEANING of the questi
 
 - **Use query_update** ONLY when seeking information you believe exists in other pages that have NOT already been retrieved. Never request pages that are already listed in selected_images or elements already visible in the current context.
   - When creating a query_update, you MUST preserve the original meaning and intent of the question while adding specific details, keywords, or alternative phrasings that might help retrieve the necessary information. The answer to your new query must directly answer the original question.
+  - **CRITICAL**: The query_update must be designed to solve the ORIGINAL question. It should not change the fundamental intent or goal of the user's query. Instead, it should enhance the original query with additional context, specific terms, or alternative phrasings that will help retrieve the exact information needed to answer the original question. Think of it as adding precision and context to the original query rather than asking a completely different question.
   - When using query_update, ALWAYS include notes to summarize what you've learned so far and explain your reasoning for the updated query.
 
 ## Provide your analysis in the following JSON format:
@@ -100,8 +101,17 @@ Remember, your final output should be a valid JSON object with the required fiel
 
 ```json
 {{
-    "scratchpad": "Analyzing the provided images and document summary. Image 1 shows the data construction pipeline overview with stages including document collection, query creation, quality review, and multimodal refine. Image 0 details the document collecting step specifically. The user query asks about the data construction pipeline process. Both images directly address this query by showing the workflow and specific implementation details.",
-    "response_type": "answer",
-    "answer": "The data construction pipeline consists of four main stages: 1) Document collecting (shown in image 0), 2) Query creation, 3) Quality review, and 4) Multimodal refine (all shown in image 1). The process follows a systematic workflow where documents are first gathered, then queries are generated, followed by quality control checks, and finally multimodal refinement to enhance the data quality."
+    "scratchpad": "The user asked about 'training data preparation methods' but the current images only show the overall pipeline structure. I need to find specific details about data preparation techniques, preprocessing steps, and training data processing methods.",
+    "response_type": "query_update",
+    "query_update": "training data preparation methods preprocessing techniques data processing steps training dataset preparation",
+    "notes": "Original question about training data preparation methods needs more specific terms to find detailed implementation information. Enhanced query adds related keywords while maintaining the original intent."
+}}
+```
+
+```json
+{{
+    "scratchpad": "The user asked about 'training data preparation methods' but the current images only show the overall pipeline structure. I need to find specific details about data preparation techniques, preprocessing steps, and training data processing methods.",
+    "response_type": "not_answerable",
+    "not_answerable": "The document does not contain the information needed to answer this question"
 }}
 ```
