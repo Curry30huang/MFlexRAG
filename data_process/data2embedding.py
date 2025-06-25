@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from pathlib import Path
@@ -14,7 +15,10 @@ from llama_index.core import SimpleDirectoryReader
 from PIL import Image
 import time
 
-from vl_embedding import VL_Embedding
+project_path = os.getcwd()
+base_dir_prefix = f"{project_path}/data_process/data"
+
+from data_process.vl_embedding import VL_Embedding
 
 class Ingestion:
     """
@@ -290,17 +294,39 @@ class Ingestion:
                         result_type = future.result()
 
 if __name__ == '__main__':
+    # 创建命令行参数解析器
+    parser = argparse.ArgumentParser(description='数据向量化处理工具')
+    parser.add_argument('--dataset_name', type=str, default='LongDocURL',
+                       help='数据集名称 (默认: LongDocURL)')
+    parser.add_argument('--input_prefix', type=str, default='img',
+                       help='输入数据目录名 (默认: img)')
+    parser.add_argument('--output_prefix', type=str, default='colqwen_ingestion',
+                       help='输出向量目录名 (默认: colqwen_ingestion)')
+    parser.add_argument('--embed_model_name', type=str, default='vidore/colqwen2-v1.0',
+                       help='向量化模型名称 (默认: vidore/colqwen2-v1.0)')
+    parser.add_argument('--workers', type=int, default=5,
+                       help='并行处理的工作进程数 (默认: 5)')
+
+    # 解析命令行参数
+    args = parser.parse_args()
+
     # 设置数据集路径
-    root_path = '/home/huangjiayu/MFlexRAG/data_process/data'
-    datasets = ['test']
+    dataset_name = args.dataset_name
+    print(f"使用数据集: {dataset_name}")
 
     # 处理每个数据集
-    for dataset in datasets:
-        dataset_dir = os.path.join(root_path, dataset)
+    dataset_dir = os.path.join(base_dir_prefix, dataset_name)
 
-        # 选择向量化模型
-        # ingestion = Ingestion(dataset_dir, input_prefix='md', output_prefix='bge_ingestion', embed_model_name='BAAI/bge-m3')  # bge-m3
-        ingestion = Ingestion(dataset_dir, input_prefix='img', output_prefix='colqwen_ingestion', embed_model_name='vidore/colqwen2-v1.0')
+    # 选择向量化模型
+    ingestion = Ingestion(
+        dataset_dir,
+        input_prefix=args.input_prefix,
+        output_prefix=args.output_prefix,
+        embed_model_name=args.embed_model_name
+    )
 
-        # 执行向量化处理
-        ingestion.ingestion_multi_session()
+    # 设置工作进程数
+    ingestion.workers = args.workers
+
+    # 执行向量化处理
+    ingestion.ingestion_multi_session()

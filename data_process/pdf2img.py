@@ -1,9 +1,12 @@
 import os
+import argparse
 from tqdm import tqdm
 from pdf2image import convert_from_path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-base_dir_prefix = './data'
+# 获取当前工作路径
+project_path = os.getcwd()
+base_dir_prefix = f"{project_path}/data_process/data"
 
 def process_pdf(pdf_path, dataset_name):
     """
@@ -114,8 +117,22 @@ def process_dataset(dataset_name, workers=1):
                     print(f"处理文件 {os.path.basename(pdf_path)} 时出错: {str(e)}")
 
 if __name__ == "__main__":
-    # 使用示例
-    dataset_name = "test"  # 替换为实际的数据集名称
-    workers = 4  # 设置并行处理的工作线程数
+    # 创建命令行参数解析器
+    parser = argparse.ArgumentParser(description='PDF转图片工具')
+    parser.add_argument('--dataset_name', type=str, default='LongDocURL',
+                       help='数据集名称 (默认: LongDocURL)')
+    parser.add_argument('--workers', type=int, default=4,
+                       help='并行处理的工作线程数 (默认: 4)')
+
+    # 解析命令行参数
+    args = parser.parse_args()
+
+    # 使用命令行参数
+    dataset_name = args.dataset_name
+    workers = args.workers
+
+    print(f"使用数据集: {dataset_name}")
+    print(f"工作线程数: {workers}")
+
     process_dataset(dataset_name, workers=workers)
 

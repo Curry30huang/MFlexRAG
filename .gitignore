@@ -3,3 +3,5 @@ minerU_model/
 __pycache__/
 tmp/
 .cache/
+converted_paths.txt
+*.log

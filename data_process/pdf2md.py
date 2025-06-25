@@ -1,5 +1,6 @@
 import os
 import uuid
+import argparse
 from pathlib import Path
 
 from magic_pdf.data.data_reader_writer import FileBasedDataWriter, FileBasedDataReader
@@ -7,7 +8,9 @@ from magic_pdf.data.dataset import PymuDocDataset
 from magic_pdf.model.doc_analyze_by_custom_model import doc_analyze
 from magic_pdf.config.enums import SupportedPdfParseMethod
 
-base_dir_prefix = './data'
+# 获取当前工作路径
+project_path = os.getcwd()
+base_dir_prefix = f"{project_path}/data_process/data"
 
 def process_pdf(pdf_path, dataset_name):
     """
@@ -116,6 +119,17 @@ def process_dataset(dataset_name):
             print(f"处理文件 {pdf_file} 时出错: {str(e)}")
 
 if __name__ == "__main__":
-    # 使用示例
-    dataset_name = "test"  # 替换为实际的数据集名称
+    # 创建命令行参数解析器
+    parser = argparse.ArgumentParser(description='PDF转Markdown工具')
+    parser.add_argument('--dataset_name', type=str, default='LongDocURL',
+                       help='数据集名称 (默认: LongDocURL)')
+
+    # 解析命令行参数
+    args = parser.parse_args()
+
+    # 使用命令行参数
+    dataset_name = args.dataset_name
+
+    print(f"使用数据集: {dataset_name}")
+
     process_dataset(dataset_name)
