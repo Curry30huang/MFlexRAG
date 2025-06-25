@@ -8,6 +8,9 @@ from magic_pdf.data.dataset import PymuDocDataset
 from magic_pdf.model.doc_analyze_by_custom_model import doc_analyze
 from magic_pdf.config.enums import SupportedPdfParseMethod
 
+# 设置CUDA可见设备
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+
 # 获取当前工作路径
 project_path = os.getcwd()
 base_dir_prefix = f"{project_path}/data_process/data"
@@ -38,6 +41,13 @@ def process_pdf(pdf_path, dataset_name):
     # 确保输出目录存在
     os.makedirs(local_md_dir, exist_ok=True)
     os.makedirs(local_image_dir, exist_ok=True)
+
+    # 判断文件是否已经完全处理过，如果是，则跳过，即判断是否存在 md json layout.pdf 三类文件
+    if os.path.exists(os.path.join(local_md_dir, f"{name_without_suff}.md")) and \
+       os.path.exists(os.path.join(local_md_dir, f"{name_without_suff}_content_list.json")) and \
+       os.path.exists(os.path.join(local_md_dir, f"{name_without_suff}_layout.pdf")):
+        print(f"文件 {pdf_file_name} 已经完全处理过，跳过")
+        return local_md_dir
 
     # 初始化文件写入器
     image_writer, md_writer = FileBasedDataWriter(local_image_dir), FileBasedDataWriter(local_md_dir)

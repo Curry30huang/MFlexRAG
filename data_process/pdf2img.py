@@ -36,10 +36,16 @@ def process_pdf(pdf_path, dataset_name):
         # 将PDF转换为图片列表
         images = convert_from_path(pdf_path)
 
+        # 判断如何目录下jpg文件数量和images长度一致，则跳过
+        if len(os.listdir(output_dir)) == len(images):
+            print(f"文件 {pdf_file_name} 已存在，跳过")
+            return output_dir
+
         # 将每一页保存为单独的图片
         for i, image in enumerate(images):
             idx = i + 1  # 页码从1开始
             # 保存为JPEG格式，文件名格式为：页码.jpg
+            # 判断如果文件存在，则跳过
             output_path = os.path.join(output_dir, f'{idx}.jpg')
             image.save(output_path, 'JPEG')
 

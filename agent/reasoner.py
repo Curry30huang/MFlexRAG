@@ -22,6 +22,8 @@ class ReasonerAgent():
         # 读取prompt文件
         with open(self.prompt_file, 'r') as f:
             self.prompt = f.read()
+        # 最大重试次数
+        self.max_retries = 3
 
     def reason(self, doc_name: str, query: str, image_refined_path_list: List[str], image_analysis_list: List[str], document_summary: str) -> Optional[Dict[str, Optional[str]]]:
         """
@@ -63,40 +65,57 @@ class ReasonerAgent():
             IMAGE_ANALYSIS=image_analysis_str,
         )
 
-        try:
-            messages_content:List[Any] = [
-                {"type": "text", "text": prompt}
-            ]
+        # 实现错误重试机制
+        for attempt in range(self.max_retries):
+            try:
+                messages_content:List[Any] = [
+                    {"type": "text", "text": prompt}
+                ]
 
-            # 追加图像
-            for image in images:
-                messages_content.append({
-                    "type": "image_url",
-                    "image_url": {
-                        "url": image,
-                        "detail": "low" # low 或者 high
-                    },
-                })
+                # 追加图像
+                for image in images:
+                    messages_content.append({
+                        "type": "image_url",
+                        "image_url": {
+                            "url": image,
+                            "detail": "low" # low 或者 high
+                        },
+                    })
 
-            response = self.client.chat.completions.create(
-                model=self.model_name,
-                messages=[
-                    {"role": "user", "content": messages_content}
-                ],
-                stream=False
-            )
-            answer = response.choices[0].message.content
-        except Exception as e:
-            print(f"推理过程中出现错误: {e}")
-            return None
+                response = self.client.chat.completions.create(
+                    model=self.model_name,
+                    messages=[
+                        {"role": "user", "content": messages_content}
+                    ],
+                    stream=False
+                )
+                answer = response.choices[0].message.content
 
-        # 解析answer，提取关键信息标签
-        if answer is None:
-            print(f"推理失败，返回结果为空")
-            return None
+                # 解析answer，提取关键信息标签
+                if answer is None:
+                    print(f"推理失败，返回结果为空 (尝试 {attempt + 1}/{self.max_retries})")
+                    if attempt == self.max_retries - 1:
+                        return None
+                    continue
 
-        parsed_result = self._parse_reasoning_response(answer)
-        return parsed_result
+                parsed_result = self._parse_reasoning_response(answer)
+
+                # 检查解析结果是否有效
+                if parsed_result and parsed_result.get('response_type') is not None:
+                    return parsed_result
+                else:
+                    print(f"解析结果无效，尝试重试 (尝试 {attempt + 1}/{self.max_retries})")
+                    if attempt == self.max_retries - 1:
+                        return parsed_result
+                    continue
+
+            except Exception as e:
+                print(f"推理过程中出现错误 (尝试 {attempt + 1}/{self.max_retries}): {e}")
+                if attempt == self.max_retries - 1:
+                    raise e
+                continue
+
+        return None
 
     def _parse_reasoning_response(self, response_text: str) -> Dict[str, Optional[str]]:
         """
@@ -136,9 +155,18 @@ class ReasonerAgent():
             print(f"原始响应: {response_text}")
             # 如果JSON解析失败，尝试使用正则表达式作为后备方案
             self._fallback_parse(response_text, result)
+
+            # 检查后备解析是否成功
+            if result['response_type'] is None:
+                raise ValueError("JSON解析失败且后备解析也失败")
+
         except Exception as e:
             print(f"解析响应时出现错误: {e}")
             self._fallback_parse(response_text, result)
+
+            # 检查后备解析是否成功
+            if result['response_type'] is None:
+                raise ValueError("解析响应失败且后备解析也失败")
 
         return result
 

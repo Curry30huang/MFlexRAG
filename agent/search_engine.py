@@ -83,7 +83,7 @@ class SearchEngine:
     """
     搜索引擎类，用于处理文档检索，是封闭领域问答，需要针对特定文档下的图片进行检索
     """
-    def __init__(self, dataset: str, doc_name: str, node_dir_prefix: Optional[str] = None, embed_model_name: str = 'vidore/colqwen2-v1.0') -> None:
+    def __init__(self, dataset: str, doc_name: str, node_dir_prefix: Optional[str] = None, embed_model_name: str = 'vidore/colqwen2-v1.0', start_idx:int=1, end_idx:int=999999) -> None:
         """
         初始化搜索引擎
 
@@ -92,6 +92,8 @@ class SearchEngine:
             doc_name: 文档名称（子目录名），用于封闭领域检索
             node_dir_prefix: 节点目录前缀
             embed_model_name: 嵌入模型名称
+            start_idx: 开始索引
+            end_idx: 结束索引
         """
         Settings.llm = None
         self.gmm = False
@@ -103,6 +105,8 @@ class SearchEngine:
         self.dataset = dataset
         self.dataset_dir = os.path.join(base_dir_prefix, dataset)
         self.img_dir = os.path.join(self.dataset_dir, 'img')
+        self.start_idx = start_idx
+        self.end_idx = end_idx
 
         # 设置文档名称（必需参数）
         if doc_name is None:
@@ -211,13 +215,17 @@ class SearchEngine:
             self.embedding_img = [torch.tensor(node.embedding).view(-1,128).bfloat16() for node in self.nodes]
             self.embedding_img = [tensor.to(self.vector_embed_model.embed_model.device) for tensor in self.embedding_img]
 
-    def change_document(self, doc_name: str) -> None:
+    def change_document(self, doc_name: str, start_idx:int=1, end_idx:int=999999
+    ) -> None:
         """
         切换文档领域，重新加载指定文档的节点
 
         参数:
             doc_name: 新的文档名称
         """
+        self.start_idx = start_idx
+        self.end_idx = end_idx
+
         if doc_name == self.doc_name:
             print(f"Already loaded document: {doc_name}")
             return
@@ -236,7 +244,7 @@ class SearchEngine:
 
     def _load_nodes_from_directory(self, directory: str) -> List[Union[TextNode, ImageNode]]:
         """
-        从指定目录加载节点文件
+        从指定目录加载节点文件，支持start_idx和end_idx
 
         参数:
             directory: 节点文件目录
@@ -250,12 +258,38 @@ class SearchEngine:
         parsed_files = []
         max_workers = 10
 
+        # 过滤文件，只保留在start_idx和end_idx范围内的文件
+        # 保证start_idx和end_idx在文件列表的范围内
+        if self.start_idx <= 0:
+            self.start_idx = 1
+        if self.end_idx > len(files):
+            self.end_idx = len(files)
+        if self.start_idx > self.end_idx:
+            raise ValueError(f"start_idx must be less than end_idx, but got start_idx={self.start_idx} and end_idx={self.end_idx}")
+
+        filtered_files = []
+        for file in files:
+            # 检查文件是否为json格式
+            if not file.endswith('.json'):
+                continue
+
+            # 从文件名中提取数字（去掉.json后缀）
+            try:
+                file_number = int(file.replace('.json', ''))
+                # 检查是否在指定范围内
+                if self.start_idx <= file_number <= self.end_idx:
+                    filtered_files.append(file)
+            except ValueError:
+                # 如果文件名不是纯数字，跳过该文件
+                continue
+
+        if not filtered_files:
+            print(f"No files found in range [{self.start_idx}, {self.end_idx}) in directory {directory}")
+            return []
+
         if max_workers == 1:
-            for file in tqdm(files, desc=f"Loading nodes from {os.path.basename(directory)}"):
+            for file in tqdm(filtered_files, desc=f"Loading nodes from {os.path.basename(directory)} (range [{self.start_idx}, {self.end_idx}])"):
                 input_file = os.path.join(directory, file)
-                suffix = input_file.split('.')[-1]
-                if suffix != 'json':
-                    continue
                 nodes = nodefile2node(input_file)
                 # 确保节点类型正确
                 for node in nodes:
@@ -264,17 +298,14 @@ class SearchEngine:
         else:
             def parse_file(file, node_dir):
                 input_file = os.path.join(node_dir, file)
-                suffix = input_file.split('.')[-1]
-                if suffix != 'json':
-                    return []
                 nodes = nodefile2node(input_file)
                 # 确保节点类型正确
                 return [node for node in nodes if isinstance(node, (TextNode, ImageNode))]
 
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                results = list(tqdm(executor.map(parse_file, files, [directory]*len(files)),
-                                  total=len(files),
-                                  desc=f"Loading nodes from {os.path.basename(directory)}"))
+                results = list(tqdm(executor.map(parse_file, filtered_files, [directory]*len(filtered_files)),
+                                  total=len(filtered_files),
+                                  desc=f"Loading nodes from {os.path.basename(directory)} (range [{self.start_idx}, {self.end_idx}])"))
             for result in results:
                 parsed_files.extend(result)
         return parsed_files

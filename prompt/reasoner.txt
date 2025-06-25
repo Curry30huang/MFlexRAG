@@ -30,27 +30,6 @@ Use the following scratchpad to organize your thoughts and show your analysis pr
 4. Determine if the provided information is sufficient to answer the question
 5. If you believe other pages might contain the answer, be specific about which content you're looking for that hasn't already been retrieved
 
-## Critical Instructions
-
-First carefully check if:
-
-- The pages listed in selected_images are already the specific pages that would contain the answer to the question
-- The specific tables, figures, charts, or other elements referenced in the question are already visible in the current images
-- The document summary explicitly mentions the content you're looking for
-
-Do not request these same pages or elements again in a query update.
-
-Based on your analysis in the scratchpad, respond in one of three ways:
-
-**If the provided pages contain sufficient information to answer the question, or if the document summary clearly indicates the answer to the question is that something does not exist:**
-Provide a clear and concise response that directly addresses the question, including an explanation of how you arrived at this conclusion using information from the document.
-
-**If based on the document summary and current pages, you're confident the entire document likely doesn't contain the answer, OR if the specific pages/tables/figures/elements that should contain the answer are already in the current context but don't actually contain relevant information:**
-Indicate that the document does not contain the information needed to answer this question.
-
-**If based on the document summary, you believe the answer exists in other parts of the document that haven't been retrieved yet:**
-Provide a rewritten long query that PRESERVES THE ORIGINAL MEANING of the question but adds specific details or keywords to help retrieve new relevant pages. The information retrieved from this new query must directly answer the original question.
-
 ## Usage Guidelines
 
 - **Use answer** when you can answer the question with the provided pages, OR when you can determine from the document summary that the answer is that something doesn't exist.
@@ -84,34 +63,34 @@ Remember, your final output should be a valid JSON object with the required fiel
 
 ```json
 {{
-    "scratchpad": "Analyzing the provided images and document summary. Image 1 shows the data construction pipeline overview with stages including document collection, query creation, quality review, and multimodal refine. Image 0 details the document collecting step specifically. The user query asks about the data construction pipeline process. Both images directly address this query by showing the workflow and specific implementation details.",
+    "scratchpad": "The document provides a detailed breakdown of quality control-related uses in 2018, including batch potency testing, batch safety testing, other quality controls, and pyrogenicity testing. The table labeled 'Table 18: Quality control related uses by type of use' is present and matches the user's query. The table lists the number of uses for each category in 2018. The figure mentioned in the question, Figure 20, illustrates the evolution of total numbers of uses of animals for pyrogenicity testing between 2015 and 2018, showing a steady decline.",
     "response_type": "answer",
-    "answer": "The data construction pipeline consists of four main stages: 1) Document collecting (shown in image 0), 2) Query creation, 3) Quality review, and 4) Multimodal refine (all shown in image 1). The process follows a systematic workflow where documents are first gathered, then queries are generated, followed by quality control checks, and finally multimodal refinement to enhance the data quality."
+    "answer": "Figure 20: Evolution of total numbers of uses of animals for pyrogenicity testing between 2015 and 2018"
 }}
 ```
 
 ```json
 {{
-    "scratchpad": "The current images show the data construction pipeline but do not contain specific information about the evaluation metrics or performance benchmarks that the user is asking about. The document summary mentions quality control but doesn't detail specific metrics.",
+    "scratchpad": "The current images show the data in 2016 but do not contain specific information about 2017.",
     "response_type": "query_update",
-    "query_update": "evaluation metrics performance benchmarks quality assessment criteria data construction pipeline results",
-    "notes": "Current pages show the pipeline structure but lack specific evaluation details. Need to find sections about metrics, benchmarks, or performance assessment."
+    "query_update": "Wind energy percentage in 2016 and 2017",
+    "notes": "Current pages show the data in 2016 but lack specific information about 2017."
 }}
 ```
 
 ```json
 {{
-    "scratchpad": "The user asked about 'training data preparation methods' but the current images only show the overall pipeline structure. I need to find specific details about data preparation techniques, preprocessing steps, and training data processing methods.",
+    "scratchpad": "The user asked about 'details of training data preparation methods' but the current images only show the overall pipeline structure. I need to find specific details about data preparation techniques, preprocessing steps, and training data processing methods.",
     "response_type": "query_update",
-    "query_update": "training data preparation methods preprocessing techniques data processing steps training dataset preparation",
+    "query_update": "details of training data preparation methods preprocessing techniques data processing steps training dataset preparation",
     "notes": "Original question about training data preparation methods needs more specific terms to find detailed implementation information. Enhanced query adds related keywords while maintaining the original intent."
 }}
 ```
 
 ```json
 {{
-    "scratchpad": "The user asked about 'training data preparation methods' but the current images only show the overall pipeline structure. I need to find specific details about data preparation techniques, preprocessing steps, and training data processing methods.",
+    "scratchpad": "The document mentions that a neural network was used for training and shows performance results, but the current pages do not contain any specific hyperparameter details such as learning rate, batch size, number of epochs, optimizer settings, or model architecture specifications. While the document discusses the training process and results, it lacks the technical implementation details that would be needed to answer this specific question.",
     "response_type": "not_answerable",
-    "not_answerable": "The document does not contain the information needed to answer this question"
+    "not_answerable": "The document does not contain the specific hyperparameter details needed to answer this question. While neural network training is mentioned, the current pages lack information about learning rates, batch sizes, optimizer settings, or other training parameters."
 }}
 ```

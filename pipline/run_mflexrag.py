@@ -24,7 +24,7 @@ class MflexRAG:
         self.document_summary_agent = DocumentSummaryAgent(api_key,model_name,model_base_url)
         self.reasoner_agent = ReasonerAgent(api_key,model_name,model_base_url)
 
-    def run_one_doc(self, doc_name: str, query: str) -> None:
+    def run_one_doc(self, doc_name: str, query: str,start_idx:int=1, end_idx:int=999999) -> None:
         """
         执行MflexRAG 的pipeline，对单个文档进行处理
         """
@@ -40,7 +40,7 @@ class MflexRAG:
 
         while loop_times < max_loop_times:
             # 1. 图像检索
-            image_node_list = self.image_retriever_agent.search(doc_name, query)
+            image_node_list = self.image_retriever_agent.search(doc_name, query,start_idx,end_idx)
             if image_node_list is None or len(image_node_list) == 0:
                 print(f"图像检索失败，跳出循环")
                 break
@@ -51,7 +51,7 @@ class MflexRAG:
                 print(f"图像路径获取失败，跳出循环")
                 break
             # 只取前面几个图像，启动模型是限制了最大读取图像数量为10
-            image_path_list = image_path_list[:5]
+            image_path_list = image_path_list[:9]
 
             print(f"图像检索成功，图像数量: {len(image_path_list)}")
             print(f"初始图像路径: {image_path_list}")
@@ -118,10 +118,8 @@ class MflexRAG:
 
 if __name__ == "__main__":
     # 初始化MflexRAG
-    mflexrag = MflexRAG(dataset="test", node_dir_prefix="colqwen_ingestion", embed_model_name="vidore/colqwen2-v1.0",api_key="EMPTY",model_name="Qwen/Qwen2.5-VL-7B-Instruct",model_base_url="http://localhost:8001/v1")
-
-    print("初始化MflexRAG完成")
+    mflexrag = MflexRAG(dataset="LongDocURL", node_dir_prefix="colqwen_ingestion", embed_model_name="vidore/colqwen2-v1.0",api_key="EMPTY",model_name="Qwen/Qwen2.5-VL-7B-Instruct",model_base_url="http://localhost:8001/v1")
 
     # 执行MflexRAG
-    mflexrag.run_one_doc(doc_name="123", query="where is Figure 2: Data Construction pipeline?")
+    mflexrag.run_one_doc(doc_name="4106951", query="Which section best matches the follwing description: \n<description>This text primarily discusses David Lack's scientific research on robins, as published in \"The Life of the Robin.\" The passage details robin behavior, including territorial habits, mating patterns, and survival rates. It explains how male robins maintain territories, their courtship behaviors, and how females choose mates. The research includes interesting experiments with stuffed birds and describes mortality rates and causes of death among robins. The text also notes that most scientific work is published in specialized journals, and concludes by encouraging more people to engage in similar scientific observation, emphasizing that valuable research can be conducted even by non-professionals in their spare time.</description>\nSelect titles from the doc that best answer the question, do not alter or analyze the titles themselves.",start_idx=69, end_idx=98)
 

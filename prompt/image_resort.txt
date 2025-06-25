@@ -30,13 +30,6 @@ When analyzing images, always refer to them by their numerical index (e.g., "ima
    - Whether this image connects to or complements other selected images
    - If there are connections between images, describe how they work together or relate to each other
 
-Important guidelines:
-- Be thorough in your relevance analysis - explain exactly why each image is or isn't useful
-- Focus on practical utility rather than superficial connections
-- Consider how images might work together to provide a complete solution
-- Be concise but specific in your descriptions
-- Prioritize images that directly address the core aspects of the query
-- Always use numerical indices when referring to images (e.g., "image 2", "image 5")
 
 ## Provide your analysis in the following JSON format:
 
