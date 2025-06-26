@@ -2,6 +2,7 @@ import os
 import uuid
 import argparse
 from pathlib import Path
+from tqdm import tqdm
 
 from magic_pdf.data.data_reader_writer import FileBasedDataWriter, FileBasedDataReader
 from magic_pdf.data.dataset import PymuDocDataset
@@ -119,7 +120,7 @@ def process_dataset(dataset_name):
         return
 
     # 逐个处理PDF文件
-    for pdf_file in pdf_files:
+    for pdf_file in tqdm(pdf_files, desc=f"处理数据集: {dataset_name}", unit="文件"):
         pdf_path = os.path.join(pdf_dir, pdf_file)
         try:
             # 处理单个PDF文件

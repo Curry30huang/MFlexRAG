@@ -44,8 +44,8 @@ echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] Python版本: \$(python --version)\" >> '
 
 # 任务1: PDF转图像
 echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] 开始执行任务: PDF转图像\" | tee -a '$LOG_FILE'
-echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] 执行命令: python -m data_process.pdf2img --dataset_name $DATASET_NAME\" | tee -a '$LOG_FILE'
-python -m data_process.pdf2img --dataset_name $DATASET_NAME >> '$LOG_FILE' 2>&1
+echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] 执行命令: python -u -m data_process.pdf2img --dataset_name $DATASET_NAME\" | tee -a '$LOG_FILE'
+python -u -m data_process.pdf2img --dataset_name $DATASET_NAME >> '$LOG_FILE' 2>&1
 if [ \$? -ne 0 ]; then
     echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] PDF转图像任务失败，停止后续任务\" >> '$LOG_FILE'
     exit 1
@@ -54,8 +54,8 @@ echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] 任务完成: PDF转图像\" | tee -a '$L
 
 # 任务2: PDF转md
 echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] 开始执行任务: PDF转md\" | tee -a '$LOG_FILE'
-echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] 执行命令: python -m data_process.pdf2md --dataset_name $DATASET_NAME\" | tee -a '$LOG_FILE'
-python -m data_process.pdf2md --dataset_name $DATASET_NAME >> '$LOG_FILE' 2>&1
+echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] 执行命令: python -u -m data_process.pdf2md --dataset_name $DATASET_NAME\" | tee -a '$LOG_FILE'
+python -u -m data_process.pdf2md --dataset_name $DATASET_NAME >> '$LOG_FILE' 2>&1
 if [ \$? -ne 0 ]; then
     echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] PDF转md任务失败，停止后续任务\" >> '$LOG_FILE'
     exit 1
@@ -64,8 +64,8 @@ echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] 任务完成: PDF转md\" | tee -a '$LOG_F
 
 # 任务3: 数据向量化
 echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] 开始执行任务: 数据向量化\" | tee -a '$LOG_FILE'
-echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] 执行命令: python -m data_process.data2embedding --dataset_name $DATASET_NAME\" | tee -a '$LOG_FILE'
-python -m data_process.data2embedding --dataset_name $DATASET_NAME >> '$LOG_FILE' 2>&1
+echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] 执行命令: python -u -m data_process.data2embedding --dataset_name $DATASET_NAME\" | tee -a '$LOG_FILE'
+python -u -m data_process.data2embedding --dataset_name $DATASET_NAME >> '$LOG_FILE' 2>&1
 if [ \$? -ne 0 ]; then
     echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] 数据向量化任务失败\" >> '$LOG_FILE'
     exit 1

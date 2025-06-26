@@ -36,14 +36,14 @@ def process_pdf(pdf_path, dataset_name):
         # 将PDF转换为图片列表
         images = convert_from_path(pdf_path)
 
-        # 判断如何目录下jpg文件数量和images长度一致，则跳过
-        if len(os.listdir(output_dir)) == len(images):
+        # 判断如何目录下jpg文件数量和images长度一致，并且存在 0.jpg 文件，则跳过
+        if len(os.listdir(output_dir)) == len(images) and "0.jpg" in os.listdir(output_dir):
             print(f"文件 {pdf_file_name} 已存在，跳过")
             return output_dir
 
         # 将每一页保存为单独的图片
         for i, image in enumerate(images):
-            idx = i + 1  # 页码从1开始
+            idx = i  # 页码从0开始
             # 保存为JPEG格式，文件名格式为：页码.jpg
             # 判断如果文件存在，则跳过
             output_path = os.path.join(output_dir, f'{idx}.jpg')
@@ -127,8 +127,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PDF转图片工具')
     parser.add_argument('--dataset_name', type=str, default='LongDocURL',
                        help='数据集名称 (默认: LongDocURL)')
-    parser.add_argument('--workers', type=int, default=4,
-                       help='并行处理的工作线程数 (默认: 4)')
+    parser.add_argument('--workers', type=int, default=8,
+                       help='并行处理的工作线程数 (默认: 8)')
 
     # 解析命令行参数
     args = parser.parse_args()

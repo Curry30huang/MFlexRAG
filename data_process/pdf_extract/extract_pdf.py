@@ -1,13 +1,12 @@
 import os
 import shutil
+import argparse
 from pathlib import Path
 
 # 获取当前工作路径
 project_path = os.getcwd()
-# 数据集名称
-dataset_name = "LongDocURL"
 
-def clear_directories():
+def clear_directories(dataset_name):
     # 需要清空的目录列表
     directories = [
         f"{project_path}/data_process/data/{dataset_name}/pdf",
@@ -34,7 +33,7 @@ def clear_directories():
             os.makedirs(directory, exist_ok=True)
             print(f"创建目录: {directory}")
 
-def copy_pdf_files():
+def copy_pdf_files(dataset_name):
     # 目标目录
     target_dir = f"{project_path}/data_process/data/{dataset_name}/pdf"
 
@@ -42,7 +41,7 @@ def copy_pdf_files():
     os.makedirs(target_dir, exist_ok=True)
 
     # 读取converted_paths.txt文件
-    with open(f"{project_path}/data_process/LongDocURL-extract/converted_paths.txt", "r") as f:
+    with open(f"{project_path}/data_process/pdf_extract/{dataset_name}_converted_paths.txt", "r") as f:
         for line in f:
             # 处理每一行
             pdf_path = line.strip()
@@ -63,12 +62,23 @@ def copy_pdf_files():
                 print(f"复制失败 {pdf_filename}: {str(e)}")
 
 if __name__ == "__main__":
+    # 创建命令行参数解析器
+    parser = argparse.ArgumentParser(description='PDF文件提取和处理工具')
+    parser.add_argument('--dataset_name', type=str, default="LongDocURL",
+                       help='数据集名称 (默认: LongDocURL)')
+
+    # 解析命令行参数
+    args = parser.parse_args()
+    dataset_name = args.dataset_name
+
+    print(f"使用数据集: {dataset_name}")
+
     # 首先清空所有目录
     print("开始清空目录...")
-    clear_directories()
+    clear_directories(dataset_name)
     print("目录清空完成")
 
     # 然后复制文件
     print("开始复制PDF文件...")
-    copy_pdf_files()
+    copy_pdf_files(dataset_name)
     print("PDF文件复制完成")
