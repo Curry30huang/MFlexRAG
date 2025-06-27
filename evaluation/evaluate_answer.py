@@ -54,7 +54,7 @@ def parse_arguments():
                        help="数据集根目录路径 (默认: /home/huangjiayu/Mdocagent-dataset)")
     parser.add_argument("--results_file_name", type=str, default='golden_direct_test.jsonl',
                        help="要评估的结果文件路径（如果不指定，将根据dataset_name自动生成）")
-    parser.add_argument("--output_file_name", type=str, default='evaluation_results.jsonl',
+    parser.add_argument("--output_file_name", type=str, default='evaluation_direct_results.jsonl',
                        help="要评估的结果文件路径（如果不指定，将根据dataset_name自动生成）")
 
     # 模型配置参数

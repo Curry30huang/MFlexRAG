@@ -1,5 +1,6 @@
 import json
 import os
+import argparse
 
 project_dir = os.getcwd()
 
@@ -20,8 +21,26 @@ def load_results(results_file):
     return results
 
 
+def parse_arguments():
+    """解析命令行参数"""
+    parser = argparse.ArgumentParser(description="分析答案")
+
+    # 数据集参数
+    parser.add_argument("--dataset_name", type=str, default="LongDocURL",
+                       help="数据集名称 (默认: LongDocURL)")
+    parser.add_argument("--path_prefix", type=str,
+                       default="/home/huangjiayu/Mdocagent-dataset",
+                       help="数据集根目录路径 (默认: /home/huangjiayu/Mdocagent-dataset)")
+    parser.add_argument("--results_file_name", type=str, default='evaluation_direct_results.jsonl',
+                       help="要评估的结果文件路径（如果不指定，将根据dataset_name自动生成）")
+
+    return parser.parse_args()
+
+
+
 def main():
-    input_file = os.path.join(project_dir,  "result", "LongDocURL" ,"evaluation_results.jsonl")
+    args = parse_arguments()
+    input_file = os.path.join(project_dir,  "result", args.dataset_name ,args.results_file_name)
     results = load_results(input_file)
 
     scores = [item['score'] for item in results if 'score' in item]

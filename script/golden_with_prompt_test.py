@@ -25,18 +25,48 @@ def process_data(data_list: List[Dict[str, Any]],dataset_name:str, output_dir: s
     # 确保输出目录存在
     os.makedirs(output_dir, exist_ok=True)
     output_file_path = f"{output_dir}/golden_with_prompt_test.jsonl"
-    # 读取文件最后一行，将JSON 转换为dict
-    last_json = None
+
+    # 读取输出文件，获取所有已经回答过的问题
+    processed_questions = set()
     if os.path.exists(output_file_path):
         with open(output_file_path, 'r', encoding='utf-8') as f:
-            last_line = f.readlines()[-1]
-            last_json = json.loads(last_line)
+            lines = f.readlines()
+            # 过滤掉空行
+            non_empty_lines = [line.strip() for line in lines if line.strip()]
 
-    # 假定一定是按照顺序处理的，所以要求是单线程
-    if last_json is not None:
-        for index, data in enumerate(data_list):
-            if data['doc_id'] == last_json['doc_id'] and data['question'] == last_json['question']:
-                data_list = data_list[index+1:]
+            if non_empty_lines:  # 确保文件不为空且有有效内容
+                try:
+                    for line in non_empty_lines:
+                        item = json.loads(line)
+                        doc_id = item.get('doc_id', '')
+                        question = item.get('question', '')
+                        # 使用doc_id+question作为唯一标识
+                        question_key = f"{doc_id}_{question}"
+                        processed_questions.add(question_key)
+                    print(f"从输出文件中读取到 {len(processed_questions)} 个已处理的问题")
+                except (json.JSONDecodeError, IndexError) as e:
+                    print(f"解析输出文件时出错: {e}，从头开始处理")
+                    processed_questions = set()
+            else:
+                print("输出文件为空，从头开始处理")
+                processed_questions = set()
+    else:
+        print("输出文件不存在，从头开始处理")
+        processed_questions = set()
+
+    # 过滤data_list，剔除已处理的问题
+    filtered_data_list = []
+    for data in data_list:
+        doc_id = data.get('doc_id', '')
+        question = data.get('question', '')
+        question_key = f"{doc_id}_{question}"
+        if question_key not in processed_questions:
+            filtered_data_list.append(data)
+
+    print(f"原始数据 {len(data_list)} 个问题，已处理 {len(processed_questions)} 个，剩余 {len(filtered_data_list)} 个待处理")
+
+    # 使用过滤后的数据
+    data_list = filtered_data_list
 
     result_list = []
 
@@ -45,11 +75,18 @@ def process_data(data_list: List[Dict[str, Any]],dataset_name:str, output_dir: s
         answer = data['answer']
         evidence_pages = data['evidence_pages']
         doc_id = data['doc_id']
-        # doc_id 是文件名，需要去掉后缀
-        doc_no = doc_id.split('.')[0]
+        # doc_id 是文件名，需要去掉后缀 使用os.path.splitext完成严谨的后缀处理
+        doc_no = os.path.splitext(doc_id)[0]
         # 判断如果 evidence_pages 是字符串，就需要转换为列表
         if isinstance(evidence_pages, str):
             evidence_pages = json.loads(evidence_pages)
+            # 需要判断因为 MMLongBench 的 evidence_pages 下标是中1开始的，但是其他数据集是0开始的，而我们图片向量化时也是从0开始的，所以需要减1
+            # note: 如果evidence_pages为空或者含有0，则直接跳过 ，因为非0都是从1开始的页面，还有部分没有证据的，所以需要跳过
+            if dataset_name == 'MMLongBench':
+                if evidence_pages is None or len(evidence_pages) == 0 or 0 in evidence_pages:
+                    print(f"doc_id: {doc_id}  question: {question}  evidence_pages为空，跳过")
+                    continue
+                evidence_pages = [page_no - 1 for page_no in evidence_pages]
 
         # 读取doc_no对应的图片
         image_dir = f"{project_dir}/data_process/data/{dataset_name}/img/{doc_no}"
@@ -97,20 +134,20 @@ Based on the question, please carefully examine each image and provide descripti
 
 *Question: {question}*
 
-For each image, please describe: Key information relevant to the question.
+Please focus on information relevant to the question and avoid irrelevant descriptions to help answer the question more accurately.
 
 Please format your response as follows:
 Image 0: [Question-based description of the first image]
 Image 1: [Question-based description of the second image]
-Image 2: [Question-based description of the third image]
 ...and so on for each image provided.
 
-Please focus on information relevant to the question and avoid irrelevant descriptions to help answer the question more accurately.
 """
 
     prompt_question_answer = """
 Please answer the question based on the following information:
+
 *Question: {question}*
+
 *Image descriptions: {image_description}*
 """
 
@@ -160,7 +197,7 @@ def save_result(result_obj: Dict[str, Any], output_dir: str) -> bool:
         # 确保输出目录存在
         os.makedirs(output_dir, exist_ok=True)
 
-        output_file_path = f"{output_dir}/golden_direct_test.jsonl"
+        output_file_path = f"{output_dir}/golden_with_prompt_test.jsonl"
 
         # 追加模式写入单个JSON对象
         with open(output_file_path, 'a', encoding='utf-8') as f:
