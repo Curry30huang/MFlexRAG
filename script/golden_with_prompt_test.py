@@ -24,7 +24,7 @@ def process_data(data_list: List[Dict[str, Any]],dataset_name:str, output_dir: s
     """
     # 确保输出目录存在
     os.makedirs(output_dir, exist_ok=True)
-    output_file_path = f"{output_dir}/golden_direct_test.jsonl"
+    output_file_path = f"{output_dir}/golden_with_prompt_test.jsonl"
     # 读取文件最后一行，将JSON 转换为dict
     last_json = None
     if os.path.exists(output_file_path):
@@ -59,7 +59,7 @@ def process_data(data_list: List[Dict[str, Any]],dataset_name:str, output_dir: s
             image_files_path_list.append(f"{image_dir}/{page_no}.jpg")
 
         # 只能取前10个图片
-        predict_answer = call_vlm_model(question,image_files_path_list[:10])
+        predict_answer = call_vlm_model_with_prompt(question,image_files_path_list[:10])
 
         # 构造结果对象
         result_obj = {
@@ -80,9 +80,9 @@ def process_data(data_list: List[Dict[str, Any]],dataset_name:str, output_dir: s
     print(f"所有问题已经完成")
     return result_list
 
-def call_vlm_model(question:str,image_path_list:List[str])->str:
+def call_vlm_model_with_prompt(question:str,image_path_list:List[str])->str:
     """
-    调用VLM模型，返回预测答案
+    调用VLM模型，返回预测答案,需要调用两次大模型，第一次为图像描述，第二次为问题回答
     """
     # 将图片全部转换为base64
     images = []
@@ -92,19 +92,47 @@ def call_vlm_model(question:str,image_path_list:List[str])->str:
             image_str = f"data:image/jpeg;base64,{image_data}"
             images.append(image_str)
 
-    messages_content:List[Any] = [
-        {"type": "text", "text": question}
-    ]
+    prompt_image_description = """
+Based on the question, please carefully examine each image and provide descriptions from the perspective of solving the problem.
 
-    for image in images:
+*Question: {question}*
+
+For each image, please describe: Key information relevant to the question.
+
+Please format your response as follows:
+Image 0: [Question-based description of the first image]
+Image 1: [Question-based description of the second image]
+Image 2: [Question-based description of the third image]
+...and so on for each image provided.
+
+Please focus on information relevant to the question and avoid irrelevant descriptions to help answer the question more accurately.
+"""
+
+    prompt_question_answer = """
+Please answer the question based on the following information:
+*Question: {question}*
+*Image descriptions: {image_description}*
+"""
+
+    image_description = call_vlm_model(prompt_image_description.format(question=question),images)
+    predict_answer = call_vlm_model(prompt_question_answer.format(question=question,image_description=image_description),images)
+    return predict_answer
+
+def call_vlm_model(query:str,image_base64_list:List[str])->str:
+    """
+    调用VLM模型，返回预测答案
+    """
+    messages_content:List[Any] = [
+        {"type": "text", "text": query}
+    ]
+    for image_base64 in image_base64_list:
         messages_content.append({
             "type": "image_url",
             "image_url": {
-                "url": image,
+                "url": image_base64,
                 "detail": "high"
             },
         })
-
     response = client.chat.completions.create(
         model="Qwen/Qwen2.5-VL-7B-Instruct",
         messages=[
@@ -116,7 +144,6 @@ def call_vlm_model(question:str,image_path_list:List[str])->str:
     if predict_answer is None:
         raise ValueError(f"预测答案为空")
     return predict_answer
-
 
 def save_result(result_obj: Dict[str, Any], output_dir: str) -> bool:
     """
@@ -150,7 +177,7 @@ def save_result(result_obj: Dict[str, Any], output_dir: str) -> bool:
 直接采用金标签，测试模型直接输出答案的能力，判断是否核心就在召回。因为7B模型输入详细的上下文描述反而会让模型回答混乱
 """
 if __name__ == "__main__":
-    # nohup python -u -m script.golden_direct_test > golden_direct_test.log 2>&1 &
+    # nohup python -u -m script.golden_with_prompt_test > golden_with_prompt_test.log 2>&1 &
 
     # 创建命令行参数解析器
     parser = argparse.ArgumentParser(description='处理JSON文件并转换文档路径')

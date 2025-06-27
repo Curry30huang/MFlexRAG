@@ -26,6 +26,7 @@ from functools import partial
 import ast
 import numpy as np
 from dotenv import load_dotenv
+import threading
 
 project_dir = os.getcwd()
 
@@ -53,6 +54,8 @@ def parse_arguments():
                        help="数据集根目录路径 (默认: /home/huangjiayu/Mdocagent-dataset)")
     parser.add_argument("--results_file_name", type=str, default='golden_direct_test.jsonl',
                        help="要评估的结果文件路径（如果不指定，将根据dataset_name自动生成）")
+    parser.add_argument("--output_file_name", type=str, default='evaluation_results.jsonl',
+                       help="要评估的结果文件路径（如果不指定，将根据dataset_name自动生成）")
 
     # 模型配置参数
     parser.add_argument("--model", type=str, default="openai/gpt-4.1",
@@ -71,7 +74,7 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def get_file_paths(dataset_name, path_prefix, results_file_name):
+def get_file_paths(dataset_name, path_prefix, results_file_name, output_file_name):
     """根据数据集名称自动生成文件路径
 
     Args:
@@ -87,25 +90,9 @@ def get_file_paths(dataset_name, path_prefix, results_file_name):
     # 真实数据文件路径
     ground_truth_file = f"{path_prefix}/{dataset_name}/samples.json"
 
-    output_file = f"{project_dir}/result/{dataset_name}/evaluation_results.jsonl"
+    output_file = f"{project_dir}/result/{dataset_name}/{output_file_name}"
 
     return results_file, ground_truth_file, output_file
-
-def load_ground_truth(ground_truth_file):
-    """加载真实数据并创建映射字典
-
-    Args:
-        ground_truth_file (str): 真实数据JSON文件路径
-
-    Returns:
-        dict: 以 'doc_id_question' 为键，答案为值的映射字典
-    """
-    print("load_ground_truth")
-    ground_truth_list = []
-    # 读取 json 列表文件
-    with open(ground_truth_file, "r", encoding="utf-8") as f:
-        ground_truth_list = json.load(f)
-    return ground_truth_list
 
 def load_results(results_file):
     """从JSONL文件加载模型预测生成的结果
@@ -116,7 +103,6 @@ def load_results(results_file):
     Returns:
         list: 包含模型生成结果的列表
     """
-    print("Loading results")
     results_list = []
     with open(results_file, "r", encoding="utf-8") as f:
         for line in f:
@@ -124,28 +110,20 @@ def load_results(results_file):
             results_list.append(item)
     return results_list
 
-def load_combined_data(results_list:list, ground_truth_list:list):
-    """加载模型预测生成的结果和真实数据
+def load_combined_data(results_list:list):
+    """变为符合指定字段的数据，即将answer改为ground_truth，其余不动
 
     Args:
         results_list (list): 模型预测生成的结果
-        ground_truth_list (list): 真实数据
     """
-    # 检查 results_list 和 ground_truth_list 的结构是否相同，判断前3个元素的question_id是否相同
-    if results_list[0]['question_id'] != ground_truth_list[0]['question_id']:
-        raise ValueError("results_list 和 ground_truth_list 的结构不同")
-    if results_list[1]['question_id'] != ground_truth_list[1]['question_id']:
-        raise ValueError("results_list 和 ground_truth_list 的结构不同")
-    if results_list[2]['question_id'] != ground_truth_list[2]['question_id']:
-        raise ValueError("results_list 和 ground_truth_list 的结构不同")
 
     combined_data = []
     # results_list 和 ground_truth_list 的结构相同，且顺序相同，可以直接组合
     for idx, result in enumerate(results_list):
         tmp = result.copy()
-        tmp['ground_truth'] = ground_truth_list[idx]['answer']
-        tmp['question'] = ground_truth_list[idx]['question']
-        tmp['doc_id'] = ground_truth_list[idx]['doc_id']
+        tmp['ground_truth'] = result['answer']
+        tmp['question'] = result['question']
+        tmp['doc_id'] = result['doc_id']
         combined_data.append(tmp)
     return combined_data
 
@@ -196,14 +174,17 @@ Return only a string with these scores in a dictionary and can be parsed by json
             score = evaluation_dict.get("binary_correctness", 0)
         except json.JSONDecodeError:
             # 如果JSON解析失败，返回-1分
-            score = -1,
+            raise ValueError(f"JSON解析失败: {evaluation_text}")
+        except Exception as e:
+            raise ValueError(f"Error evaluating response: {e}")
+
         return {
             "score": score,
             "explanation": evaluation_text
         }
     except Exception as e:
-        print(f"Error evaluating response: {e}")
-        return {"score": 0, "explanation": f"Evaluation error: {str(e)}"}
+        raise ValueError(f"Error evaluating response: {e}")
+
 
 
 def process_item(item:dict, client:OpenAI, model:str, max_tokens:int, temperature:float, add_notanswerable:bool,output_file:str):
@@ -229,6 +210,7 @@ def process_item(item:dict, client:OpenAI, model:str, max_tokens:int, temperatur
 
         # 跳过"无法回答"的真实答案（除非明确要求包含）
         if ground_truth == "Not answerable" and not add_notanswerable:
+            print(f"跳过问题 - doc_id: {doc_id}, ground_truth: {ground_truth}")
             return None
 
         # 评估响应
@@ -252,20 +234,16 @@ def process_item(item:dict, client:OpenAI, model:str, max_tokens:int, temperatur
             "error": None
         }
 
-        # 将结果写入文件
-        with open(output_file, 'a') as f:
-            f.write(json.dumps(res) + '\n')
+        # 使用线程安全的文件写入方式
+        with threading.Lock():
+            with open(output_file, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(res, ensure_ascii=False) + '\n')
+                f.flush()  # 确保数据立即写入磁盘
 
         # 返回评估结果
         return res
     except Exception as e:
-        return {
-            "doc_id": item.get('doc_id', item.get('question_id', '')),
-            "question": item.get('question', ''),
-            "error": f"Evaluation error: {str(e)}",
-            "score": 0,
-            "explanation": f"Exception during evaluation: {str(e)}"
-        }
+        raise e
 
 
 def main():
@@ -279,7 +257,8 @@ def main():
     results_file, ground_truth_file, output_file = get_file_paths(
         args.dataset_name,
         args.path_prefix,
-        args.results_file_name
+        args.results_file_name,
+        args.output_file_name
     )
 
     # 初始化OpenAI客户端
@@ -287,15 +266,12 @@ def main():
     if client is None:
         print("Exiting script as OpenAI client could not be initialized.")
         return
-    print("In the main function")
 
-    # 加载真实数据
-    ground_truth_map = load_ground_truth(ground_truth_file)
 
     # 加载模型生成的结果（包含真实答案和预测答案）
     results_list = load_results(results_file)
 
-    combined_data = load_combined_data(results_list, ground_truth_map)
+    combined_data = load_combined_data(results_list)
 
     # 读取输出文件，需要获取所有已经回答过的问题，从combined_data中剔除
     processed_questions = set()
