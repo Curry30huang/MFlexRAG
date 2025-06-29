@@ -90,6 +90,16 @@ def process_data(data_list: List[Dict[str, Any]],dataset_name:str, output_dir: s
 
         # 读取doc_no对应的图片
         image_dir = f"{project_dir}/data_process/data/{dataset_name}/img/{doc_no}"
+        # 过滤evidence_pages中超过元素数字超过image_dir中图片数量上限的，保证不能越界
+        filtered_evidence_pages = []
+        for page_no in evidence_pages:
+            if page_no >= len(os.listdir(image_dir)):
+                print(f"doc_id: {doc_id}  question: {question}  evidence_pages中存在越界元素，跳过")
+                continue
+            filtered_evidence_pages.append(page_no)
+
+        evidence_pages = filtered_evidence_pages
+
         # 读取 evidence_pages 对应的图片
         image_files_path_list = []
         for page_no in evidence_pages:
@@ -134,13 +144,17 @@ Based on the question, please carefully examine each image and provide descripti
 
 *Question: {question}*
 
+The number of images is {image_len}.
+
 Please focus on information relevant to the question and avoid irrelevant descriptions to help answer the question more accurately.
+
+IMPORTANT: Only describe the images that are actually provided to you. Do not fabricate descriptions for images that were not included in the input.
 
 Please format your response as follows:
 Image 0: [Question-based description of the first image]
 Image 1: [Question-based description of the second image]
+Image 2: [Question-based description of the third image]
 ...and so on for each image provided.
-
 """
 
     prompt_question_answer = """
@@ -151,8 +165,18 @@ Please answer the question based on the following information:
 *Image descriptions: {image_description}*
 """
 
-    image_description = call_vlm_model(prompt_image_description.format(question=question),images)
+    # print("image-len: ",len(images))
+    # print("----"*5)
+    # print(f"image_path_list: {image_path_list}")
+    # print("----"*5)
+    # print(f"prompt_image_description: {prompt_image_description.format(question=question)}")
+    # print("----"*5)
+    image_description = call_vlm_model(prompt_image_description.format(question=question,image_len=len(images)),images)
+    # print(f"image_description: {image_description}")
+    # print("----"*5)
     predict_answer = call_vlm_model(prompt_question_answer.format(question=question,image_description=image_description),images)
+    # print(f"predict_answer: {predict_answer}")
+    # print("----"*5)
     return predict_answer
 
 def call_vlm_model(query:str,image_base64_list:List[str])->str:

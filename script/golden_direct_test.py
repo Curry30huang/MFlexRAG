@@ -90,6 +90,15 @@ def process_data(data_list: List[Dict[str, Any]],dataset_name:str, output_dir: s
 
         # 读取doc_no对应的图片
         image_dir = f"{project_dir}/data_process/data/{dataset_name}/img/{doc_no}"
+        # 过滤evidence_pages中超过元素数字超过image_dir中图片数量上限的，保证不能越界
+        filtered_evidence_pages = []
+        for page_no in evidence_pages:
+            if page_no >= len(os.listdir(image_dir)):
+                print(f"doc_id: {doc_id}  question: {question}  evidence_pages中存在越界元素，跳过")
+                continue
+            filtered_evidence_pages.append(page_no)
+
+        evidence_pages = filtered_evidence_pages
         # 读取 evidence_pages 对应的图片
         image_files_path_list = []
         for page_no in evidence_pages:
